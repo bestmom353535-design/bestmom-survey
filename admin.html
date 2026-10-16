@@ -17,7 +17,11 @@
 <section class="card"><h2>기관 인지 경로</h2><div id="sources"></div></section>
 <section class="card"><h2>서비스 중 불편사항 처리</h2><div id="complaints"></div></section>
 <section class="card"><h2>산모님 자유 의견</h2><div id="comments"></div></section>
-<section class="card"><h2>데이터 보관 안내</h2><p class="subtle">응답 원본은 비공개 Supabase 데이터베이스에 저장됩니다. 별도 자동 백업을 설정하기 전까지는 매월 CSV 파일을 다운로드해 외부 저장소에 보관해 주세요. CSV에는 개인정보를 직접 수집하지 않는 설문 응답만 포함됩니다.</p></section>
+<section class="card"><h2>자동 백업 현황</h2>
+<p class="subtle">매일 오전 3시 10분(한국시간) 설문 전체 응답을 비공개 Storage에 보관합니다. 최근 일별 45일, 월별 약 25개월 보관하도록 설정되어 있습니다.</p>
+<p id="backupStatus" class="subtle" role="status">백업을 확인하는 중...</p>
+<div class="row"><button id="backupRefresh" type="button">백업 현황 새로고침</button><button id="backupDownload" type="button" disabled>최근 백업 JSON 다운로드</button></div>
+<p class="subtle">이 백업은 원본 데이터베이스와 별도의 파일로 보관되지만 동일한 Supabase 프로젝트에 속합니다. 장기적으로는 JSON이나 CSV를 PC 또는 별도 보안 저장소에도 정기적으로 저장해 주세요.</p></section>
 </div>
 </main>
 <script type="module">
@@ -34,10 +38,42 @@ function compute(){const year=$("year").value,month=$("month").value,city=$("cit
 function render(){const out=$("charts");clear(out);for(const [key,title,type] of tab==="service"?serviceDefs:healthDefs){chart(out,title,filtered.map(x=>x.answers?.[key]).filter(x=>x!==undefined&&x!==null),scales[type]);}clear($("sources"));sourceChart($("sources"),filtered.map(x=>x.source));clear($("complaints"));chart($("complaints"),"고충 처리 여부",filtered.map(x=>x.answers?.complaint),scales.complaint);clear($("comments"));let has=false;for(const r of filtered){if(!r.comment?.trim())continue;has=true;const item=node("div","comment");item.append(node("small","",r.service_year+"년 "+r.service_month+"월 · "+r.city+" · 제출 "+new Date(r.created_at).toLocaleDateString("ko-KR")),node("div","",r.comment));$("comments").append(item)}if(!has)$("comments").append(node("p","hint","작성된 자유 의견이 없습니다."));}
 function initFilters(){const years=Array.from(new Set(rows.map(x=>x.service_year))).sort((a,b)=>b-a),yr=$("year");clear(yr);yr.append(new Option("전체 연도","all"));for(const y of years)yr.append(new Option(y+"년",String(y)));yr.value="all";for(let i=1;i<=12;i++)$("month").append(new Option(i+"월",String(i)));}
 async function load(){const arr=[];for(let offset=0;offset<50000;offset+=1000){const{data,error}=await db.from("bestmom_responses").select("id,created_at,service_year,service_month,city,source,source_other,comment,answers").order("id",{ascending:false}).range(offset,offset+999);if(error)throw error;arr.push(...(data||[]));if(!data||data.length<1000)break;}rows=arr;initFilters();compute();}
+
+let backupFiles=[];
+async function refreshBackups() {
+ const status=$("backupStatus"),button=$("backupDownload");button.disabled=true;
+ status.textContent="백업 목록 확인 중...";
+ try{
+  const session=(await db.auth.getSession()).data.session;
+  if(!session)throw Error("관리자 로그인이 필요합니다.");
+  const base=window.BESTMOM_CONFIG.url.replace(/\/$/,"");
+  const res=await fetch(base+"/functions/v1/bestmom-survey-backup?action=list",{headers:{Authorization:"Bearer "+session.access_token}});
+  const json=await res.json();if(!res.ok||!json.ok)throw Error(json.error||"목록 조회 실패");
+  backupFiles=Array.isArray(json.backups)?json.backups:[];
+  const daily=backupFiles.filter(f=>f.kind==="daily").sort((a,b)=>b.path.localeCompare(a.path));
+  const newest=daily[0]||backupFiles[0];
+  status.textContent=newest?"최근 백업: "+newest.path+" · 보관 파일 "+backupFiles.length+"개":"백업 파일이 아직 없습니다.";
+  button.dataset.path=newest?.path||"";button.disabled=!newest;
+ }catch(e){status.textContent="백업 확인 실패: "+e.message;}
+}
+async function downloadLatestBackup(){
+ const button=$("backupDownload"),path=button.dataset.path;if(!path)return;
+ button.disabled=true;
+ try{
+  const session=(await db.auth.getSession()).data.session;
+  if(!session)throw Error("관리자 로그인이 필요합니다.");
+  const base=window.BESTMOM_CONFIG.url.replace(/\/$/,"");
+  const res=await fetch(base+"/functions/v1/bestmom-survey-backup?action=download&file="+encodeURIComponent(path),{headers:{Authorization:"Bearer "+session.access_token}});
+  if(!res.ok)throw Error("다운로드 실패 ("+res.status+")");
+  const blob=await res.blob(),url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download="bestmom-survey-"+path.replace("/","-");document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ }catch(e){alert(e.message);}finally{button.disabled=false;}
+}
+
 function csvCell(value){let s=value==null?"":String(value);if(/^[=+\-@\t\r]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"'}
 function exportCSV(){const keys=[...serviceDefs.map(x=>x[0]),"complaint",...healthDefs.map(x=>x[0])];const heads=["응답번호","제출일","이용연도","이용월","지역","인지경로","기타경로",...keys,"의견"];const line=r=>[r.id,r.created_at,r.service_year,r.service_month,r.city,r.source,r.source_other,...keys.map(k=>r.answers?.[k]??""),r.comment].map(csvCell).join(",");const content="\uFEFF"+[heads.map(csvCell).join(","),...filtered.map(line)].join("\r\n");const blob=new Blob([content],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="bestmom_survey_"+new Date().toISOString().slice(0,10)+".csv";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 async function authorized(){const {data,error}=await db.rpc("bestmom_is_admin");return !error&&data===true;}
-async function onSignedIn(){if(!await authorized()){await db.auth.signOut();throw new Error("관리자 권한이 없는 계정입니다.");}$("login").hidden=true;$("app").hidden=false;$("logout").hidden=false;await load();}
+async function onSignedIn(){if(!await authorized()){await db.auth.signOut();throw new Error("관리자 권한이 없는 계정입니다.");}$("login").hidden=true;$("app").hidden=false;$("logout").hidden=false;await load();await refreshBackups();}
 if(!cfg.url||!cfg.anonKey){$("loginErr").textContent="관리자 시스템 연결 전입니다. 데이터베이스 연결 후 이용할 수 있습니다.";$("loginErr").hidden=false;$("loginForm").querySelector("button").disabled=true;}
 else{db=createClient(cfg.url,cfg.anonKey);const{data}=await db.auth.getSession();if(data?.session){try{await onSignedIn()}catch(e){$("loginErr").hidden=false;$("loginErr").textContent=e.message}}}
 $("loginForm").addEventListener("submit",async e=>{e.preventDefault();$("loginErr").hidden=true;const b=$("loginForm").querySelector("button");b.disabled=true;try{const {error}=await db.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});if(error)throw error;await onSignedIn();}catch(err){$("loginErr").hidden=false;$("loginErr").textContent=err.message||"로그인 실패"}finally{b.disabled=false}});
@@ -45,5 +81,7 @@ $("logout").addEventListener("click",async()=>{await db.auth.signOut();location.
 for(const id of ["year","month","city"])$(id).addEventListener("change",compute);
 $("refresh").addEventListener("click",async()=>{try{await load()}catch(err){alert("데이터를 불러오지 못했습니다: "+err.message)}});
 $("export").addEventListener("click",exportCSV);
+$("backupRefresh").addEventListener("click",refreshBackups);
+$("backupDownload").addEventListener("click",downloadLatestBackup);
 document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>{tab=b.dataset.tab;document.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("active",x===b));render()}));
 </script></body></html>
