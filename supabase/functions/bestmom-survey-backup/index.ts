@@ -82,7 +82,9 @@ async function createBackup() {
   if (u.error) throw u.error;
   const paths = [dailyPath];
   if (date.endsWith("-01")) {
-    const monthlyPath = "monthly/" + date.slice(0, 7) + ".json";
+    const previousMonth = new Date(date.slice(0, 7) + "-01T00:00:00Z");
+    previousMonth.setUTCDate(0);
+    const monthlyPath = "monthly/" + previousMonth.toISOString().slice(0, 7) + ".json";
     const monthUpload = await admin.storage.from(bucket).upload(monthlyPath, blob, {
       contentType: "application/json", upsert: true, cacheControl: "0"
     });
