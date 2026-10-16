@@ -64,9 +64,9 @@ begin
     if (p_answers->>k) is null or (p_answers->>k) not in ('1','2','3','4','5')
     then raise exception '필수 문항에 답변해 주세요.'; end if;
   end loop;
-  if (p_answers->>'needs') not in ('0','1')
+  if coalesce(p_answers->>'needs','') not in ('0','1')
   then raise exception '요청사항 문항을 확인해 주세요.'; end if;
-  if (p_answers->>'complaint') not in ('none','resolved','unresolved')
+  if coalesce(p_answers->>'complaint','') not in ('none','resolved','unresolved')
   then raise exception '불편사항 문항을 확인해 주세요.'; end if;
   insert into public.bestmom_responses
     (service_year,service_month,city,source,source_other,comment,answers,client_token)
