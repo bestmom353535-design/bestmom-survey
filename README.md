@@ -1,30 +1,52 @@
 # 베스트맘 산후관리 만족도 조사
 
-**독립 프로젝트:** 기존 제공기록지 작성 시스템 및 데이터베이스와 별개로 구축합니다.
+기존 제공기록지 작성 시스템과 완전히 분리된 독립 프로젝트입니다.
 
-## 구성
-- `index.html` : 산모용 모바일 익명 설문 (단일 고정 링크)
-- `admin.html` : 관리자 전용 월·연도·지역별 통계 및 CSV 다운로드
-- `config.js` : 공개 Supabase URL 및 anon(publishable) key
-- `supabase/schema.sql` : 새로운 설문 전용 Supabase 프로젝트의 비공개 응답 테이블과 접근 권한
-- `.github/workflows/pages.yml` : GitHub Pages 배포
+## 운영 중인 사이트
 
-## 배포 전 반드시 수행할 사항
-1. 이 저장소의 **Settings → Pages → Build and deployment → Source: GitHub Actions** 로 변경하세요.
-2. 새 설문 전용 Supabase 프로젝트를 생성하세요. 기존 제공기록지 Supabase DB에서 SQL을 실행하지 마세요.
-3. 새 프로젝트 SQL Editor에서 `supabase/schema.sql` 실행.
-4. Authentication → Users에서 인증된 관리자 이메일 계정 생성 및 비밀번호 설정. 관리자 이메일은 SQL에서 지정한 계정과 일치해야 합니다.
-5. 새 Supabase 프로젝트의 URL과 **공개 anon/publishable key만** `config.js`에 입력해 커밋하세요. **service_role/secret 키는 절대로 공개 GitHub에 입력하지 마세요.**
-6. GitHub Pages의 실제 주소로 이동해 실제 테스트 설문을 제출하고, 전용 Supabase Table 저장 확인 → 로그인하지 않은 사용자 열람 차단 확인 → 관리자 로그인 및 CSV 다운로드 확인.
+- 산모용 익명 설문: https://bestmom353535-design.github.io/bestmom-survey/
+- 관리자 전용 페이지: https://bestmom353535-design.github.io/bestmom-survey/admin.html
+- GitHub Pages: GitHub Actions 자동 배포
+- Supabase: 새 `bestmom-survey` 전용 프로젝트 (`xbwfwvmqxsrvtkgrqwpp`, Seoul)
+- 관리자 로그인: Supabase Authentication 사용자 계정
 
-**현재 연결 전 상태에서는 제출 시 '설문 시스템 준비 중입니다' 메시지가 나타납니다. 산모님들에게 URL을 공유하지 마세요.**
+## 파일
 
-## 보안 및 백업
-- GitHub에는 설문 응답을 저장하지 않습니다. 별도 Supabase DB에만 저장합니다.
-- RLS: 테이블 직접 조회는 관리자에게만 허용. 익명 사용자는 제출 전용 RPC만 호출 가능.
-- 이름·전화번호 입력란 없음. 스팸이나 의도적인 중복 응답을 완전히 막는 것은 아닙니다.
-- 자동 외부 백업은 **아직 미설정**입니다. 완성 전까지 관리자 화면 CSV 다운로드 후 별도의 보안 저장소에 정기 보관하세요.
-- 무료 서비스 한도와 프로젝트 비활성화·복구 정책은 실제 계정 정책을 확인하세요.
+- `index.html`: 모바일 산모용 익명 설문
+- `admin.html`: 관리자 전용 통계, 필터, CSV 및 JSON 백업 다운로드
+- `config.js`: 별도 Supabase 프로젝트의 공개 API 연결 정보 (비밀키 아님)
+- `supabase/schema.sql`: 익명 응답 저장 및 관리자 RLS
+- `supabase/functions/bestmom-survey-backup/index.ts`: 비공개 Storage 백업·관리자 다운로드 서버 기능
+- `supabase/backup_schedule.sql`: 자동 백업 일정 (실제 Supabase Vault 비밀키와 별도 설정)
+- `.github/workflows/pages.yml`: GitHub Pages 게시
 
-## 기존 보고서와 연결된 지표
-서비스 만족도 8개 핵심 항목 및 전체 만족도·의견, 산모 및 신생아 건강증진 4문항. 긍정적인 5점 선택지를 왼쪽에 배치하며, 식사·돌봄 문항에도 '해당 서비스 이용하지 않음' 선택지를 두지 않습니다.
+## 자동 백업 — 2026년 10월 16일 설정 완료
+
+- 매일 **오전 3:10 한국시간** (= UTC 18:10) `pg_cron` → `pg_net` → Supabase Edge Function 실행
+- 응답 전체를 `bestmom-survey-backups` **비공개 Supabase Storage**에 JSON 저장
+- 일별 백업: 최대 약 45일 보관
+- 월별 백업: 매월 1일 직전 월의 응답 전체 스냅샷을 별도 저장, 최대 약 25개월 보관
+- 예약 실행 작업명: `bestmom-survey-private-backup-daily`
+- 스케줄러 인증 토큰은 Supabase Vault에만 생성·보관하며 공개 GitHub에 저장하지 않음
+- 관리자 페이지에서 최신 백업 확인 및 인증 후 JSON 원본 다운로드 가능
+- 수동으로 실행한 최초 백업 파일 생성 시험 성공 (HTTP 200, Storage 파일 생성 확인)
+
+**중요한 백업 한계:** Storage 백업도 **같은 Supabase 프로젝트**에 속합니다. 프로젝트 자체의 삭제·비활성화 또는 계정 전체 사고에 대한 완전한 별도 백업은 아닙니다. 관리자 화면의 JSON/CSV를 정기적으로 PC 또는 별도의 안전한 저장소에 복사하세요. 무료 플랜에서 프로젝트가 일시 중지되면 예약 백업이 지연될 수 있습니다.
+
+## 응답 보안
+
+- 응답 데이터는 GitHub 공개 저장소에 저장하지 않음
+- `public.bestmom_responses` RLS 활성화, 익명 데이터 조회 금지
+- 익명 제출은 검증된 제출 전용 RPC만 허용
+- 자동 백업 다운로드는 서버에서 Supabase 인증 토큰 및 관리자 이메일을 검사한 후에만 허용
+- Storage 버킷 공개 접근 비활성화
+- 개인정보(이름·연락처) 입력란 없음
+- 의도적 중복·허위 응답을 100% 방지하지는 않으므로 운영 중 점검 필요
+
+## 운영 중 주의
+
+- 관리자가 로그인했을 때 새로고침을 누르면 응답 및 백업 상태 갱신
+- 관리자에서 백업이 2일 이상 새로 생성되지 않으면 Supabase Cron / Edge Function 로그 확인 필요
+- 공개 API 키는 웹 UI용이며, `service_role`·`sb_secret` 등의 관리자 비밀키를 GitHub에 올리지 말 것
+- GitHub Actions 혹은 Supabase 프로젝트 접근 설정 변경 시 재검증
+- 무료 플랜 사용량과 정책은 변동 가능하며 영구 무료·무손실을 보장하지 않음
