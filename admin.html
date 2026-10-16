@@ -52,7 +52,10 @@ async function refreshBackups() {
   backupFiles=Array.isArray(json.backups)?json.backups:[];
   const daily=backupFiles.filter(f=>f.kind==="daily").sort((a,b)=>b.path.localeCompare(a.path));
   const newest=daily[0]||backupFiles[0];
-  status.textContent=newest?"최근 백업: "+newest.path+" · 보관 파일 "+backupFiles.length+"개":"백업 파일이 아직 없습니다.";
+  const backupDay=newest?.path.match(/\d{4}-\d{2}-\d{2}/)?.[0];
+  const backupAge=backupDay?(Date.now()-Date.parse(backupDay+"T00:00:00Z"))/86400000:0;
+  const lagging=backupDay&&backupAge>2.3;
+  status.textContent=newest?(lagging?"⚠ 자동 백업 지연 가능성 확인 필요 · ":"")+"최근 백업: "+newest.path+" · 보관 파일 "+backupFiles.length+"개":"백업 파일이 아직 없습니다.";
   button.dataset.path=newest?.path||"";button.disabled=!newest;
  }catch(e){status.textContent="백업 확인 실패: "+e.message;}
 }
