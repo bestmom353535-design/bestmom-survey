@@ -33,7 +33,7 @@ async function allSurveyRows() {
   const all = [];
   for (let offset = 0; offset < 100000; offset += 1000) {
     const { data, error } = await admin.from("bestmom_responses")
-      .select("id,created_at,service_year,service_month,city,source,source_other,comment,answers,client_token")
+      .select("id,created_at,service_year,service_month,city,source,source_other,comment,answers,client_token,respondent_name,birth_date,identity_consent_at")
       .order("id", { ascending: true }).range(offset, offset + 999);
     if (error) throw error;
     all.push(...(data || []));
