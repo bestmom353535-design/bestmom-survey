@@ -4,7 +4,7 @@
 
 ## 운영 중인 사이트
 
-- 산모용 익명 설문: https://bestmom353535-design.github.io/bestmom-survey/
+- 산모용 이름·생년월일 확인 설문: https://bestmom353535-design.github.io/bestmom-survey/
 - 관리자 전용 페이지: https://bestmom353535-design.github.io/bestmom-survey/admin.html
 - GitHub Pages: GitHub Actions 자동 배포
 - Supabase: 새 `bestmom-survey` 전용 프로젝트 (`xbwfwvmqxsrvtkgrqwpp`, Seoul)
@@ -37,10 +37,10 @@
 
 - 응답 데이터는 GitHub 공개 저장소에 저장하지 않음
 - `public.bestmom_responses` RLS 활성화, 익명 데이터 조회 금지
-- 익명 제출은 검증된 제출 전용 RPC만 허용
+- 이름·생년월일 및 동의를 확인한 제출 전용 RPC만 허용
 - 자동 백업 다운로드는 서버에서 Supabase 인증 토큰 및 관리자 이메일을 검사한 후에만 허용
 - Storage 버킷 공개 접근 비활성화
-- 개인정보(이름·연락처) 입력란 없음
+- 이름·생년월일 입력 필수, 연락처 입력란 없음
 - 의도적 중복·허위 응답을 100% 방지하지는 않으므로 운영 중 점검 필요
 
 ## 운영 중 주의
@@ -50,3 +50,10 @@
 - 공개 API 키는 웹 UI용이며, `service_role`·`sb_secret` 등의 관리자 비밀키를 GitHub에 올리지 말 것
 - GitHub Actions 혹은 Supabase 프로젝트 접근 설정 변경 시 재검증
 - 무료 플랜 사용량과 정책은 변동 가능하며 영구 무료·무손실을 보장하지 않음
+
+## 2026-10-26 변경
+- 이전 응답 10건 보존. 이후 이름·생년월일(8자리) 필수 입력.
+- 종료 연월 선택 제거, 제출 시점(한국시간) 연월 자동 집계.
+- 관리자 개별 응답 목록과 CSV에 이름·생년월일 반영.
+- 건강 관련 설문은 별도 개인정보 동의 표시.
+- 이름·생년월일은 3년 후 자동 익명화, 설문 결과·통계 유지.
