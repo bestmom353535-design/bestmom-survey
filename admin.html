@@ -16,6 +16,7 @@
 <section class="card"><div class="tabs"><button class="active" data-tab="service">서비스 만족도</button><button data-tab="health">건강증진</button></div><p class="subtle">각 답변의 건수와 비율을 함께 표시합니다. 항목별 유효 응답 수를 기준으로 계산합니다.</p><div id="charts"></div></section>
 <section class="card"><h2>기관 인지 경로</h2><div id="sources"></div></section>
 <section class="card"><h2>서비스 중 불편사항 처리</h2><div id="complaints"></div></section>
+<section class="card"><h2>개별 응답 내역</h2><p class="subtle">이전 익명 응답은 이름과 생년월일이 표시되지 않습니다.</p><div id="respondents"></div></section>
 <section class="card"><h2>산모님 자유 의견</h2><div id="comments"></div></section>
 <section class="card"><h2>자동 백업 현황</h2>
 <p class="subtle">매일 오전 3시 10분(한국시간) 설문 전체 응답을 비공개 Storage에 보관합니다. 최근 일별 45일, 월별 약 25개월 보관하도록 설정되어 있습니다.</p>
@@ -35,9 +36,20 @@ function pct(n,total){return total?(n/total*100).toFixed(1)+"%":"0.0%"}
 function chart(holder,title,data,scale){const outer=node("div","chart");outer.append(node("h3","",title));const labels=scale.map(([key,label])=>[key,label,data.filter(x=>String(x)===String(key)).length]);for(const [key,label,n] of labels){const div=node("div","choice"),cap=node("span","",label),bar=node("div","bar"),fill=node("div");fill.style.width=pct(n,data.length);bar.append(fill);div.append(cap,bar,node("strong","",n+"건 · "+pct(n,data.length)));outer.append(div)}holder.append(outer)}
 function sourceChart(holder,items){const opts=Array.from(new Set(["온라인 및 SNS","친척·이웃 소개","기존 이용자 소개","보건소·지자체 안내","기관 안내 및 홍보","기타",...items]));chart(holder,"기관 인지 경로",items,opts.map(x=>[x,x]));}
 function compute(){const year=$("year").value,month=$("month").value,city=$("city").value;filtered=rows.filter(r=>(year==="all"||String(r.service_year)===year)&&(month==="all"||String(r.service_month)===month)&&(city==="all"||r.city===city));$("total").textContent=filtered.length+"건";const all=filtered.map(x=>Number(x.answers?.overall)).filter(n=>n>=1&&n<=5);$("avg").textContent=all.length?(all.reduce((a,b)=>a+b,0)/all.length).toFixed(2)+"점":"-";$("positive").textContent=all.length?pct(all.filter(x=>x>=4).length,all.length):"-";render();}
-function render(){const out=$("charts");clear(out);for(const [key,title,type] of tab==="service"?serviceDefs:healthDefs){chart(out,title,filtered.map(x=>x.answers?.[key]).filter(x=>x!==undefined&&x!==null),scales[type]);}clear($("sources"));sourceChart($("sources"),filtered.map(x=>x.source));clear($("complaints"));chart($("complaints"),"고충 처리 여부",filtered.map(x=>x.answers?.complaint),scales.complaint);clear($("comments"));let has=false;for(const r of filtered){if(!r.comment?.trim())continue;has=true;const item=node("div","comment");item.append(node("small","",r.service_year+"년 "+r.service_month+"월 · "+r.city+" · 제출 "+new Date(r.created_at).toLocaleDateString("ko-KR")),node("div","",r.comment));$("comments").append(item)}if(!has)$("comments").append(node("p","hint","작성된 자유 의견이 없습니다."));}
+function render(){const out=$("charts");clear(out);for(const [key,title,type] of tab==="service"?serviceDefs:healthDefs){chart(out,title,filtered.map(x=>x.answers?.[key]).filter(x=>x!==undefined&&x!==null),scales[type]);}clear($("sources"));sourceChart($("sources"),filtered.map(x=>x.source));clear($("complaints"));chart($("complaints"),"고충 처리 여부",filtered.map(x=>x.answers?.complaint),scales.complaint);const people=$("respondents");clear(people);
+if(!filtered.length)people.append(node("p","hint","등록된 응답이 없습니다."));
+for(const r of filtered) {
+ const item=node("div","comment");
+ const idInfo=r.respondent_name?(r.respondent_name+" · "+(r.birth_date||"생년월일 미기록")):"이전 익명 응답";
+ item.append(node("strong","",idInfo),
+             node("small","",r.service_year+"년 "+r.service_month+"월 · "+r.city+" · "+new Date(r.created_at).toLocaleDateString("ko-KR")),
+             node("span","subtle","종합 만족도 "+(r.answers?.overall||"-")+"점"));
+ if(r.comment?.trim())item.append(node("div","",r.comment));
+ people.append(item);
+}
+clear($("comments"));let has=false;for(const r of filtered){if(!r.comment?.trim())continue;has=true;const item=node("div","comment");item.append(node("small","",r.service_year+"년 "+r.service_month+"월 · "+r.city+" · "+(r.respondent_name||"이전 익명 응답")+" · 제출 "+new Date(r.created_at).toLocaleDateString("ko-KR")),node("div","",r.comment));$("comments").append(item)}if(!has)$("comments").append(node("p","hint","작성된 자유 의견이 없습니다."));}
 function initFilters(){const years=Array.from(new Set(rows.map(x=>x.service_year))).sort((a,b)=>b-a),yr=$("year");clear(yr);yr.append(new Option("전체 연도","all"));for(const y of years)yr.append(new Option(y+"년",String(y)));yr.value="all";for(let i=1;i<=12;i++)$("month").append(new Option(i+"월",String(i)));}
-async function load(){const arr=[];for(let offset=0;offset<50000;offset+=1000){const{data,error}=await db.from("bestmom_responses").select("id,created_at,service_year,service_month,city,source,source_other,comment,answers").order("id",{ascending:false}).range(offset,offset+999);if(error)throw error;arr.push(...(data||[]));if(!data||data.length<1000)break;}rows=arr;initFilters();compute();}
+async function load(){const arr=[];for(let offset=0;offset<50000;offset+=1000){const{data,error}=await db.from("bestmom_responses").select("id,created_at,service_year,service_month,city,source,source_other,comment,answers,respondent_name,birth_date").order("id",{ascending:false}).range(offset,offset+999);if(error)throw error;arr.push(...(data||[]));if(!data||data.length<1000)break;}rows=arr;initFilters();compute();}
 
 let backupFiles=[];
 async function refreshBackups() {
@@ -74,7 +86,7 @@ async function downloadLatestBackup(){
 }
 
 function csvCell(value){let s=value==null?"":String(value);if(/^[=+\-@\t\r]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"'}
-function exportCSV(){const keys=[...serviceDefs.map(x=>x[0]),"complaint",...healthDefs.map(x=>x[0])];const heads=["응답번호","제출일","이용연도","이용월","지역","인지경로","기타경로",...keys,"의견"];const line=r=>[r.id,r.created_at,r.service_year,r.service_month,r.city,r.source,r.source_other,...keys.map(k=>r.answers?.[k]??""),r.comment].map(csvCell).join(",");const content="\uFEFF"+[heads.map(csvCell).join(","),...filtered.map(line)].join("\r\n");const blob=new Blob([content],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="bestmom_survey_"+new Date().toISOString().slice(0,10)+".csv";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+function exportCSV(){const keys=[...serviceDefs.map(x=>x[0]),"complaint",...healthDefs.map(x=>x[0])];const heads=["응답번호","제출일","집계연도","집계월","지역","이름","생년월일","인지경로","기타경로",...keys,"의견"];const line=r=>[r.id,r.created_at,r.service_year,r.service_month,r.city,r.respondent_name||"",r.birth_date||"",r.source,r.source_other,...keys.map(k=>r.answers?.[k]??""),r.comment].map(csvCell).join(",");const content="\uFEFF"+[heads.map(csvCell).join(","),...filtered.map(line)].join("\r\n");const blob=new Blob([content],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="bestmom_survey_"+new Date().toISOString().slice(0,10)+".csv";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 async function authorized(){const {data,error}=await db.rpc("bestmom_is_admin");return !error&&data===true;}
 async function onSignedIn(){if(!await authorized()){await db.auth.signOut();throw new Error("관리자 권한이 없는 계정입니다.");}$("login").hidden=true;$("app").hidden=false;$("logout").hidden=false;await load();await refreshBackups();}
 if(!cfg.url||!cfg.anonKey){$("loginErr").textContent="관리자 시스템 연결 전입니다. 데이터베이스 연결 후 이용할 수 있습니다.";$("loginErr").hidden=false;$("loginForm").querySelector("button").disabled=true;}
