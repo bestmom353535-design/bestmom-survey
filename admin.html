@@ -96,7 +96,7 @@ async function onSignedIn(){if(!await authorized()){await db.auth.signOut();thro
 db=createClient(cfg.url,cfg.anonKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
 const {data:{session}}=await db.auth.getSession();
 if(session){try{await onSignedIn()}catch(err){$("loginErr").textContent=err.message||"CRM 로그인 정보를 확인해 주세요.";$("loginErr").hidden=false}}
-$("loginForm").addEventListener("submit",async e=>{e.preventDefault();$("loginErr").hidden=true;const b=$("loginForm").querySelector("button");b.disabled=true;try{const {error}=await db.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});if(error)throw error;await onSignedIn();}catch(err){$("loginErr").hidden=false;$("loginErr").textContent=(err?.message==="Invalid login credentials"?"이메일 또는 비밀번호가 일치하지 않습니다. 아래에서 재설정을 진행해 주세요.":err.message)||"CRM 로그인 실패"}finally{b.disabled=false}});
+$("loginForm").addEventListener("submit",async e=>{e.preventDefault();$("loginErr").hidden=true;const b=$("loginForm").querySelector("button");b.disabled=true;try{const {error}=await db.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});if(error)throw error;await onSignedIn();}catch(err){$("loginErr").hidden=false;$("loginErr").textContent=(err?.message==="Invalid login credentials"?"기존 베스트맘 CRM 운영자 이메일과 비밀번호로 로그인해 주세요.":err.message)||"CRM 로그인 실패"}finally{b.disabled=false}});
 $("logout").addEventListener("click",async()=>{await db.auth.signOut();location.reload()});
 for(const id of ["year","month","city"])$(id).addEventListener("change",compute);
 $("refresh").addEventListener("click",async()=>{try{await load()}catch(err){alert("데이터를 불러오지 못했습니다: "+err.message)}});
