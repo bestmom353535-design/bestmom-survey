@@ -92,7 +92,13 @@ async function downloadLatestBackup(){
 function csvCell(value){let s=value==null?"":String(value);if(/^[=+\-@\t\r]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"'}
 function exportCSV(){const keys=[...serviceDefs.map(x=>x[0]),"complaint",...healthDefs.map(x=>x[0])];const heads=["응답번호","제출일","집계연도","집계월","지역","이름","생년월일","인지경로","기타경로",...keys,"의견"];const line=r=>[r.id,r.created_at,r.service_year,r.service_month,r.city,r.respondent_name||"",r.birth_date||"",r.source,r.source_other,...keys.map(k=>r.answers?.[k]??""),r.comment].map(csvCell).join(",");const content="\uFEFF"+[heads.map(csvCell).join(","),...filtered.map(line)].join("\r\n");const blob=new Blob([content],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="bestmom_survey_"+new Date().toISOString().slice(0,10)+".csv";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 async function authorized(){const {data:{user},error:authError}=await db.auth.getUser();if(authError||!user)return false;const {data,error}=await db.from("profiles").select("role,active").eq("id",user.id).maybeSingle();return !error&&data?.role==="admin"&&data?.active===true;}
-async function onSignedIn(){if(!await authorized()){await db.auth.signOut();throw new Error("관리자 권한이 없는 계정입니다.");}$("login").hidden=true;$("app").hidden=false;$("logout").hidden=false;await load();await refreshBackups();}
+async function onSignedIn(){
+ if(!await authorized()){await db.auth.signOut();throw new Error("CRM 운영자 계정으로 로그인해 주세요.");}
+ $("login").hidden=true;$("app").hidden=false;$("logout").hidden=false;
+ try{await load();}
+ catch(e){let err=$("surveyLoadError");if(!err){err=document.createElement("p");err.id="surveyLoadError";err.className="error";$("app").prepend(err)}err.hidden=false;err.textContent="Survey 데이터를 표시하지 못했습니다: "+(e.message||"연결 오류")+" · 새로고침을 다시 눌러주세요.";}
+ try{await refreshBackups();}catch(e){console.warn("backup status",e.message||e)}
+}
 db=createClient(cfg.url,cfg.anonKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
 const {data:{session}}=await db.auth.getSession();
 if(session){try{await onSignedIn()}catch(err){$("loginErr").textContent=err.message||"CRM 로그인 정보를 확인해 주세요.";$("loginErr").hidden=false}}
