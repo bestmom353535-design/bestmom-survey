@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>베스트맘 | 전자계약서 서명</title><meta name="color-scheme" content="light"><meta name="description" content="베스트맘 산모·신생아 건강관리 서비스 이용계약서를 안전하게 확인하고 서명하세요."><meta property="og:type" content="website"><meta property="og:site_name" content="베스트맘"><meta property="og:title" content="베스트맘 이용계약서"><meta property="og:description" content="산모·신생아 건강관리 서비스 계약내용 확인 및 전자서명"><meta name="robots" content="noindex,nofollow,noarchive"><meta name="referrer" content="no-referrer">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f7fa;color:#172b45;font:14px/1.55 system-ui,'Malgun Gothic',sans-serif}
+header{background:#fff;border-bottom:1px solid #dfe5ec;padding:13px 18px;display:flex;justify-content:space-between;gap:12px;align-items:center}
+header strong{font-size:17px;color:#183d64}main{max-width:990px;margin:16px auto;padding:0 12px 50px}
+.panel{background:#fff;border:1px solid #e1e6ed;border-radius:12px;padding:15px;margin:12px 0}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+button,.btn{border:1px solid #bfd0e1;border-radius:8px;background:white;padding:10px 14px;font:inherit;cursor:pointer;color:#173858;font-weight:700}
+button.primary{background:#194b78;color:#fff;border-color:#194b78}button:disabled{opacity:.4;cursor:default}
+#sheetWrap{position:relative;margin:12px auto;overflow:hidden;background:#fff;box-shadow:0 6px 30px #183e5b15}
+#sheet{position:absolute;top:0;left:0;transform-origin:top left;background:white}
+#sheet .paper{display:none!important;margin:0!important;box-shadow:none!important}
+#sheet .paper.current{display:block!important}
+#pageControls{justify-content:center}
+label{display:block;font-size:13px;font-weight:700;margin:10px 0 4px}
+input[type=text]{width:100%;padding:11px;border-radius:8px;border:1px solid #bac8d6;font:inherit}
+.consent{padding:8px;border-bottom:1px solid #eff1f5}
+.consent .row label{display:inline-flex;align-items:center;gap:4px;margin:3px 12px 3px 0}
+canvas{width:100%;height:135px;touch-action:none;display:block;background:white;border:1px dashed #9db4cd;border-radius:7px}
+#message{padding:12px;background:#f1f5fa;border-radius:8px;color:#285078;white-space:pre-wrap}
+.small{font-size:12px;color:#637387}footer{text-align:center;padding:12px;font-size:12px;color:#647487}
+#renderZone{position:absolute;left:0;top:0;z-index:-1;width:800px;background:white;pointer-events:none}
+#renderZone .paper{display:block!important;margin:0!important;box-shadow:none!important}
+@media(max-width:600px){header{align-items:flex-start;flex-direction:column}.panel{padding:11px}button{padding:9px 11px}}
+</style></head><body>
+<header><strong>BESTMOM | 베스트맘</strong><span id="status">전자계약 확인</span></header>
+<main><div class="panel"><strong id="docName">계약서를 불러오는 중입니다.</strong><div class="small">모든 페이지를 확인하신 후 아래에서 서명해 주세요.</div></div>
+<div id="sheetWrap"><div id="sheet"></div></div>
+<div class="row panel" id="pageControls"><button id="prev">〈 이전</button><b id="counter"></b><button id="next">다음 〉</button></div>
+<section class="panel" id="formArea" hidden>
+<h3>계약 내용 확인 및 전자서명</h3>
+<div id="consentArea" hidden><p>개인정보 항목별로 동의 또는 거부를 선택해 주세요.</p><div id="consentRows"></div></div>
+<label for="signerName">서명자 성명</label><input id="signerName" type="text" placeholder="계약서의 산모 성명" autocomplete="name" maxlength="80">
+<label>전자서명</label><canvas id="signPad" width="850" height="270"></canvas>
+<div class="row" style="justify-content:flex-end"><button type="button" id="clear">서명 지우기</button></div>
+<label style="font-weight:400"><input type="checkbox" id="agree"> 계약서 전체 내용을 확인했고, 위 서명을 본 문서의 모든 산모 서명란에 적용하는 데 동의합니다.</label>
+<button class="primary" id="complete" type="button">서명 완료 · 계약서 제출</button>
+<div id="message" style="margin-top:12px" aria-live="polite"></div></section>
+<section class="panel" id="doneArea" hidden><h3>전자서명이 완료되었습니다.</h3><p>서명한 계약서를 확인하고 PDF로 저장할 수 있습니다.</p><a id="pdfLink" class="btn" target="_blank" rel="noopener">계약서 PDF 확인 · 다운로드</a></section>
+</main><footer>베스트맘 산모·신생아 건강관리 서비스</footer>
+<div id="renderZone"></div>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+<script>
+(function(){
+var params=new URLSearchParams(location.search),token=params.get('t')||params.get('token')||'',endPoint='https://chbxwvsetyvzhxdfmzdj.supabase.co/functions/v1/bestmom-econtract',rawPages=[],css='',idx=0,doc=null,marked=false,signature='';
+var $=id=>document.getElementById(id);
+var mark=m=>{$('message').textContent=m;};
+function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+async function api(action,body){var r=await fetch(endPoint+'?action='+action,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}),v=await r.json();if(!r.ok)throw new Error(v.error||'서버 오류');return v}
+function ensureClean(el){el.querySelectorAll('script,iframe,object,embed').forEach(e=>e.remove());el.querySelectorAll('*').forEach(e=>{Array.from(e.attributes).forEach(a=>{if(/^on/i.test(a.name)||/javascript:/i.test(a.value))e.removeAttribute(a.name)})})}
+function selectPage(n){
+ idx=Math.max(0,Math.min(rawPages.length-1,n));
+ var sheet=$('sheet');sheet.innerHTML=rawPages[idx];ensureClean(sheet);
+ sheet.querySelector('.paper')?.classList.add('current');
+ sheet.querySelectorAll('button,input').forEach(e=>e.disabled=true);
+ var width=794,height=1123,scale=Math.min(1,($('sheetWrap').parentElement.clientWidth-6)/width);
+ sheet.style.width=width+'px';sheet.style.transform='scale('+scale+')';
+ $('sheetWrap').style.width=(width*scale)+'px';$('sheetWrap').style.height=(height*scale)+'px';
+ $('counter').textContent=(idx+1)+' / '+rawPages.length;
+ $('prev').disabled=idx===0;$('next').disabled=idx===rawPages.length-1;
+ }
+function signedDocLink(){return endPoint+'?action=pdf&token='+encodeURIComponent(token)}
+async function init(){
+ try{var r=await fetch(endPoint+'?action=preview&token='+encodeURIComponent(token),{cache:'no-store'}),obj=await r.json();if(!r.ok)throw Error(obj.error);
+ doc=obj;rawPages=obj.snapshot.pages;css=obj.snapshot.css;
+ var style=document.createElement('style');style.textContent=css+'\nbody.signer .paper{display:block!important}';document.head.appendChild(style);
+ $('docName').textContent=obj.motherName+' 산모님 · '+(obj.kind==='private'?'일반 서비스':'정부 바우처')+' 이용계약서';
+ $('signerName').value=obj.motherName;
+ $('status').textContent=obj.status==='signed'?'서명 완료':'서명 대기';
+ $('formArea').hidden=obj.status==='signed';$('doneArea').hidden=obj.status!=='signed';
+ if(obj.status==='signed')$('pdfLink').href=signedDocLink();
+ if(obj.kind!=='private'&&obj.status!=='signed'){ $('consentArea').hidden=false;var names=['개인정보 처리','고유식별정보 처리','민감정보 처리','제3자 제공'];
+ $('consentRows').innerHTML=names.map((name,i)=>'<div class="consent">'+(i+1)+'. '+name+'<div class="row"><label><input type="radio" name="con'+i+'" value="yes"> 동의</label><label><input type="radio" name="con'+i+'" value="no"> 거부</label></div></div>').join('') }
+ selectPage(0);window.addEventListener('resize',()=>selectPage(idx));
+ }catch(e){$('docName').textContent='계약서를 열 수 없습니다.';$('formArea').hidden=true;$('pageControls').hidden=true;document.getElementById('sheetWrap').hidden=true;alert(e.message)}
+}
+$('prev').onclick=()=>selectPage(idx-1);$('next').onclick=()=>selectPage(idx+1);
+var cv=$('signPad'),ctx=cv.getContext('2d'),drag=false;
+ctx.strokeStyle='#111';ctx.lineWidth=3.2;ctx.lineCap='round';ctx.lineJoin='round';
+function pt(e){var r=cv.getBoundingClientRect();return [(e.clientX-r.left)*cv.width/r.width,(e.clientY-r.top)*cv.height/r.height]}
+cv.addEventListener('pointerdown',e=>{drag=true;marked=true;cv.setPointerCapture(e.pointerId);ctx.beginPath();ctx.moveTo(...pt(e))});
+cv.addEventListener('pointermove',e=>{if(drag){ctx.lineTo(...pt(e));ctx.stroke()}});
+cv.addEventListener('pointerup',()=>{drag=false});cv.addEventListener('pointercancel',()=>{drag=false});
+$('clear').onclick=()=>{ctx.clearRect(0,0,cv.width,cv.height);marked=false};
+function setPdfInputs(page,consents,img){
+ page.querySelectorAll('input[data-consent]').forEach(r=>{r.checked=consents[r.dataset.consent]===r.value});
+ page.querySelectorAll('.sigbutton').forEach(x=>x.remove());
+ page.querySelectorAll('.signline').forEach(x=>{x.innerHTML='';var image=document.createElement('img');image.src=img;image.alt='산모 전자서명';x.appendChild(image)});
+ page.querySelectorAll('button').forEach(x=>x.remove());
+ }
+async function makePdf(consents,img){
+ if(!window.html2canvas||!window.jspdf?.jsPDF)throw Error('PDF 생성 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.');
+ var pdf=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
+ var stage=$('renderZone');stage.innerHTML='';
+ for(var i=0;i<rawPages.length;i++){
+  var holder=document.createElement('div');holder.innerHTML=rawPages[i];ensureClean(holder);var paper=holder.querySelector('.paper');if(!paper)throw Error('계약서 페이지 오류');
+  setPdfInputs(paper,consents,img);stage.appendChild(paper);
+  paper.style.display='block';paper.style.width='794px';paper.style.height='1123px';paper.style.minHeight='1123px';paper.style.maxHeight='1123px';
+  var c=await window.html2canvas(paper,{backgroundColor:'#fff',scale:1.7,logging:false,useCORS:true,width:794,height:1123});
+  if(i)pdf.addPage('a4','portrait');
+  pdf.addImage(c.toDataURL('image/jpeg',.84),'JPEG',0,0,210,297,undefined,'FAST');
+  paper.remove();
+ }
+ return pdf.output('datauristring').split(',')[1];
+}
+$('complete').onclick=async()=>{
+ try{
+ if(!marked)throw Error('서명을 입력해 주세요.');if(!$('agree').checked)throw Error('계약 내용 및 서명 적용에 동의해 주세요.');
+ var who=$('signerName').value.trim();if(!who)throw Error('서명자 성명을 입력해 주세요.');
+ if(who!==doc.motherName&&!confirm('계약서의 산모명과 입력한 이름이 다릅니다. 대리인 서명인지 확인해 주세요. 계속할까요?'))return;
+ var consents={};if(doc.kind!=='private'){for(var i=0;i<4;i++){var chosen=document.querySelector('input[name=con'+i+']:checked');if(!chosen)throw Error('개인정보 동의 항목 4개를 모두 선택해 주세요.');consents[i]=chosen.value}}
+ var sig=cv.toDataURL('image/png');
+ $('complete').disabled=true;mark('서명된 계약서 PDF를 생성하고 있습니다. 창을 닫지 말아 주세요.');
+ var pdf=await makePdf(consents,sig);
+ mark('서버에 계약서 PDF를 저장하고 있습니다.');
+ var response=await api('sign',{token:token,signerName:who,signature:sig,consents:consents,accepted:true,applyAll:true,pdfBase64:pdf,clientTime:new Date().toISOString()});
+ $('formArea').hidden=true;$('doneArea').hidden=false;$('pdfLink').href=signedDocLink();$('status').textContent='서명 완료';
+ }catch(e){mark('오류: '+e.message)}finally{$('complete').disabled=false}
+};
+init();
+})();
+</script></body></html>
