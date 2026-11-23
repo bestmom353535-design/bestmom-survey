@@ -64,6 +64,12 @@ function selectPage(n){
  }
 function signedDocLink(){return endPoint+'?action=pdf&token='+encodeURIComponent(token)}
 async function init(){
+ if(!token){
+  $('docName').textContent='베스트맘 전자계약서';
+  document.querySelector('.panel .small').textContent='문자로 받으신 개인 서명 링크를 눌러 계약서를 확인해 주세요.';
+  $('pageControls').hidden=true;$('sheetWrap').hidden=true;$('formArea').hidden=true;
+  return;
+ }
  try{var r=await fetch(endPoint+'?action=preview&token='+encodeURIComponent(token),{cache:'no-store'}),obj=await r.json();if(!r.ok)throw Error(obj.error);
  doc=obj;rawPages=obj.snapshot.pages;css=obj.snapshot.css;
  var style=document.createElement('style');style.textContent=css+'\nbody.signer .paper{display:block!important}';document.head.appendChild(style);
@@ -75,7 +81,7 @@ async function init(){
  if(obj.kind!=='private'&&obj.status!=='signed'){ $('consentArea').hidden=false;var names=['개인정보 처리','고유식별정보 처리','민감정보 처리','제3자 제공'];
  $('consentRows').innerHTML=names.map((name,i)=>'<div class="consent">'+(i+1)+'. '+name+'<div class="row"><label><input type="radio" name="con'+i+'" value="yes"> 동의</label><label><input type="radio" name="con'+i+'" value="no"> 거부</label></div></div>').join('') }
  selectPage(0);window.addEventListener('resize',()=>selectPage(idx));
- }catch(e){$('docName').textContent='계약서를 열 수 없습니다.';$('formArea').hidden=true;$('pageControls').hidden=true;document.getElementById('sheetWrap').hidden=true;alert(e.message)}
+ }catch(e){$('docName').textContent='계약서를 열 수 없습니다.';$('formArea').hidden=true;$('pageControls').hidden=true;document.getElementById('sheetWrap').hidden=true;document.querySelector('.panel .small').textContent=String(e?.message||'링크 유효기간을 확인해 주세요.');}
 }
 $('prev').onclick=()=>selectPage(idx-1);$('next').onclick=()=>selectPage(idx+1);
 var cv=$('signPad'),ctx=cv.getContext('2d'),drag=false;
