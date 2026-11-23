@@ -169,7 +169,7 @@ $('complete').onclick=async()=>{
  var pdf=await makePdf(consents,sig);
  mark('서버에 계약서 PDF를 저장하고 있습니다.');
  var response=await api('sign',{token:token,signerName:who,signature:sig,consents:consents,accepted:true,applyAll:true,pdfBase64:pdf,clientTime:new Date().toISOString()});
- $('formArea').hidden=true;$('doneArea').hidden=false;$('pdfLink').href=signedDocLink();$('status').textContent='서명 완료';
+ $('formArea').hidden=true;$('doneArea').hidden=false;$('signJumpBanner').hidden=true;document.body.classList.remove('has-sign-cta');$('pdfLink').href=signedDocLink();$('status').textContent='서명 완료';
  }catch(e){mark('오류: '+e.message)}finally{$('complete').disabled=false}
 };
 init();
