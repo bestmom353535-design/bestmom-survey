@@ -22,11 +22,45 @@ canvas{width:100%;height:135px;touch-action:none;display:block;background:white;
 #message{padding:12px;background:#f1f5fa;border-radius:8px;color:#285078;white-space:pre-wrap}
 .small{font-size:12px;color:#637387}footer{text-align:center;padding:12px;font-size:12px;color:#647487}
 #renderZone{position:absolute;left:0;top:0;z-index:-1;width:800px;background:white;pointer-events:none}
-#renderZone .paper{display:block!important;margin:0!important;box-shadow:none!important}
+#renderZone .paper{display:block!important;margin:0!important;box-shadow:none!important;transform:none!important;transform-origin:top left!important;letter-spacing:normal!important;word-spacing:normal!important}
+#renderZone .paper *{letter-spacing:normal!important;word-spacing:normal!important;text-shadow:none!important}
+#sheet .paper.current{transform:none!important;transform-origin:top left!important}
+[hidden]{display:none!important}
+#topPageNav{justify-content:center;margin:10px 0 6px;background:#fff;border:1px solid #e1e6ed;border-radius:10px;padding:8px;gap:12px}
+#signJumpBanner{position:fixed;bottom:0;left:0;right:0;z-index:100;background:#fff;border-top:1px solid #d4e0ec;box-shadow:0 -3px 17px #102c471c;padding:10px max(14px,env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));display:flex;justify-content:space-between;align-items:center;gap:14px}
+#signJumpBanner .jump-info{font-size:12px;line-height:1.45;color:#56677d}
+#signJumpBanner .jump-info strong{display:block;color:#173858;font-size:14px}
+#goToSignature{background:#194b78;color:#fff;border-color:#194b78;white-space:nowrap;min-height:44px;padding:10px 16px}
+body.has-sign-cta main{padding-bottom:135px}
+#formArea{scroll-margin-top:16px}
+#pageControls button:disabled,#topPageNav button:disabled{opacity:.32}
+@media(max-width:700px){
+  main{margin:8px auto;padding:0 9px 110px}
+  #sheetWrap{width:100%!important;height:auto!important;overflow:visible!important;margin:8px auto;box-shadow:0 2px 16px #183e5b17}
+  #sheet{position:relative!important;top:auto!important;left:auto!important;width:100%!important;height:auto!important;transform:none!important}
+  #sheet .paper.current{width:100%!important;height:auto!important;min-height:0!important;max-height:none!important;padding:18px 14px!important;transform:none!important;overflow:visible!important;box-sizing:border-box!important}
+  #sheet .paper .page-content{height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;display:block!important}
+  #sheet .paper h1{font-size:19px!important;line-height:1.45!important;letter-spacing:normal!important;word-break:keep-all!important;margin:0 0 15px!important}
+  #sheet .paper h2{font-size:16px!important;line-height:1.55!important;margin:13px 0 7px!important}
+  #sheet .paper h3{font-size:15px!important;line-height:1.5!important;margin:12px 0 6px!important}
+  #sheet .paper p,#sheet .paper .tight p,#sheet .paper .dense p,#sheet .paper .contract-operations p,#sheet .paper .notice,#sheet .paper .smalltext{font-size:14px!important;line-height:1.7!important;letter-spacing:normal!important;word-spacing:normal!important;white-space:pre-wrap!important;overflow-wrap:anywhere!important;margin-bottom:9px!important}
+  #sheet .paper table{width:100%!important;table-layout:fixed!important;font-size:13px!important;line-height:1.55!important;margin:10px 0 14px!important}
+  #sheet .paper table th,#sheet .paper table td{font-size:13px!important;line-height:1.5!important;padding:8px 6px!important;word-break:break-word!important;overflow-wrap:anywhere!important}
+  #sheet .paper .privacy-columns{columns:1!important;column-count:1!important}
+  #sheet .paper .privacy-columns p{font-size:14px!important;line-height:1.65!important;margin-bottom:8px!important}
+  #sheet .paper .footer{position:static!important;display:flex!important;flex-wrap:wrap!important;gap:6px!important;margin-top:24px!important;padding-top:8px!important;font-size:12px!important}
+  #sheet .paper .signrow,#sheet .paper .consent-sign,#sheet .paper .orgfoot{transform:none!important;margin:16px 0 0!important;min-height:0!important}
+  #sheet .paper .checkrow{display:flex!important;flex-wrap:wrap!important;gap:7px!important;padding:9px 0!important;font-size:13px!important}
+  #sheet .paper .checks .options{flex:0 0 auto!important}
+  #sheet .paper .text-block{font-size:14px!important;line-height:1.65!important}
+  #topPageNav{display:flex!important}
+  #signJumpBanner .jump-info{max-width:160px}
+}
 @media(max-width:600px){header{align-items:flex-start;flex-direction:column}.panel{padding:11px}button{padding:9px 11px}}
 </style></head><body>
 <header><strong>BESTMOM | 베스트맘</strong><span id="status">전자계약 확인</span></header>
 <main><div class="panel"><strong id="docName">계약서를 불러오는 중입니다.</strong><div class="small">모든 페이지를 확인하신 후 아래에서 서명해 주세요.</div></div>
+<div class="row" id="topPageNav" hidden><button type="button" id="topPrev">〈 이전 쪽</button><b id="topCounter"></b><button type="button" id="topNext">다음 쪽 〉</button></div>
 <div id="sheetWrap"><div id="sheet"></div></div>
 <div class="row panel" id="pageControls"><button id="prev">〈 이전</button><b id="counter"></b><button id="next">다음 〉</button></div>
 <section class="panel" id="formArea" hidden>
@@ -39,7 +73,9 @@ canvas{width:100%;height:135px;touch-action:none;display:block;background:white;
 <button class="primary" id="complete" type="button">서명 완료 · 계약서 제출</button>
 <div id="message" style="margin-top:12px" aria-live="polite"></div></section>
 <section class="panel" id="doneArea" hidden><h3>전자서명이 완료되었습니다.</h3><p>서명한 계약서를 확인하고 PDF로 저장할 수 있습니다.</p><a id="pdfLink" class="btn" target="_blank" rel="noopener">계약서 PDF 확인 · 다운로드</a></section>
-</main><footer>베스트맘 산모·신생아 건강관리 서비스</footer>
+</main>
+<div id="signJumpBanner" hidden role="region" aria-label="전자서명 바로가기"><div class="jump-info"><strong>서명란은 아래에 있어요</strong>계약서 내용을 확인한 뒤 서명해 주세요.</div><button type="button" id="goToSignature">서명하러 가기 ↓</button></div>
+<footer>베스트맘 산모·신생아 건강관리 서비스</footer>
 <div id="renderZone"></div>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
@@ -56,18 +92,20 @@ function selectPage(n){
  var sheet=$('sheet');sheet.innerHTML=rawPages[idx];ensureClean(sheet);
  sheet.querySelector('.paper')?.classList.add('current');
  sheet.querySelectorAll('button,input').forEach(e=>e.disabled=true);
- var width=794,height=1123,scale=Math.min(1,($('sheetWrap').parentElement.clientWidth-6)/width);
- sheet.style.width=width+'px';sheet.style.transform='scale('+scale+')';
- $('sheetWrap').style.width=(width*scale)+'px';$('sheetWrap').style.height=(height*scale)+'px';
+ var width=794,height=1123,mobile=window.matchMedia('(max-width:700px)').matches;
+ if(mobile){sheet.style.width='100%';sheet.style.transform='none';$('sheetWrap').style.width='100%';$('sheetWrap').style.height='auto'}
+ else{var scale=Math.min(1,($('sheetWrap').parentElement.clientWidth-6)/width);sheet.style.width=width+'px';sheet.style.transform='scale('+scale+')';$('sheetWrap').style.width=(width*scale)+'px';$('sheetWrap').style.height=(height*scale)+'px'}
  $('counter').textContent=(idx+1)+' / '+rawPages.length;
- $('prev').disabled=idx===0;$('next').disabled=idx===rawPages.length-1;
+ $('topCounter').textContent=(idx+1)+' / '+rawPages.length;
+ $('prev').disabled=$('topPrev').disabled=idx===0;
+ $('next').disabled=$('topNext').disabled=idx===rawPages.length-1;
  }
 function signedDocLink(){return endPoint+'?action=pdf&token='+encodeURIComponent(token)}
 async function init(){
  if(!token){
   $('docName').textContent='베스트맘 전자계약서';
   document.querySelector('.panel .small').textContent='문자로 받으신 개인 서명 링크를 눌러 계약서를 확인해 주세요.';
-  $('pageControls').hidden=true;$('sheetWrap').hidden=true;$('formArea').hidden=true;
+  $('pageControls').hidden=true;$('topPageNav').hidden=true;$('sheetWrap').hidden=true;$('formArea').hidden=true;$('signJumpBanner').hidden=true;
   return;
  }
  try{var r=await fetch(endPoint+'?action=preview&token='+encodeURIComponent(token),{cache:'no-store'}),obj=await r.json();if(!r.ok)throw Error(obj.error);
@@ -77,13 +115,16 @@ async function init(){
  $('signerName').value=obj.motherName;
  $('status').textContent=obj.status==='signed'?'서명 완료':'서명 대기';
  $('formArea').hidden=obj.status==='signed';$('doneArea').hidden=obj.status!=='signed';
+ $('signJumpBanner').hidden=obj.status!=='pending';document.body.classList.toggle('has-sign-cta',obj.status==='pending');
+ $('topPageNav').hidden=false;
  if(obj.status==='signed')$('pdfLink').href=signedDocLink();
  if(obj.kind!=='private'&&obj.status!=='signed'){ $('consentArea').hidden=false;var names=['개인정보 처리','고유식별정보 처리','민감정보 처리','제3자 제공'];
  $('consentRows').innerHTML=names.map((name,i)=>'<div class="consent">'+(i+1)+'. '+name+'<div class="row"><label><input type="radio" name="con'+i+'" value="yes"> 동의</label><label><input type="radio" name="con'+i+'" value="no"> 거부</label></div></div>').join('') }
  selectPage(0);window.addEventListener('resize',()=>selectPage(idx));
- }catch(e){$('docName').textContent='계약서를 열 수 없습니다.';$('formArea').hidden=true;$('pageControls').hidden=true;document.getElementById('sheetWrap').hidden=true;document.querySelector('.panel .small').textContent=String(e?.message||'링크 유효기간을 확인해 주세요.');}
+ }catch(e){$('docName').textContent='계약서를 열 수 없습니다.';$('formArea').hidden=true;$('pageControls').hidden=true;$('topPageNav').hidden=true;$('signJumpBanner').hidden=true;document.getElementById('sheetWrap').hidden=true;document.querySelector('.panel .small').textContent=String(e?.message||'링크 유효기간을 확인해 주세요.');}
 }
-$('prev').onclick=()=>selectPage(idx-1);$('next').onclick=()=>selectPage(idx+1);
+$('prev').onclick=$('topPrev').onclick=()=>{selectPage(idx-1);$('topPageNav').scrollIntoView({behavior:'smooth',block:'start'})};$('next').onclick=$('topNext').onclick=()=>{selectPage(idx+1);$('topPageNav').scrollIntoView({behavior:'smooth',block:'start'})};
+$('goToSignature').onclick=()=>{$('formArea').scrollIntoView({behavior:'smooth',block:'start'});};
 var cv=$('signPad'),ctx=cv.getContext('2d'),drag=false;
 ctx.strokeStyle='#111';ctx.lineWidth=3.2;ctx.lineCap='round';ctx.lineJoin='round';
 function pt(e){var r=cv.getBoundingClientRect();return [(e.clientX-r.left)*cv.width/r.width,(e.clientY-r.top)*cv.height/r.height]}
@@ -101,13 +142,18 @@ async function makePdf(consents,img){
  if(!window.html2canvas||!window.jspdf?.jsPDF)throw Error('PDF 생성 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.');
  var pdf=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
  var stage=$('renderZone');stage.innerHTML='';
+ // PDF must render at full A4 desktop dimensions, independent of phone viewport/CSS.
+ if(document.fonts?.ready)await document.fonts.ready;
  for(var i=0;i<rawPages.length;i++){
   var holder=document.createElement('div');holder.innerHTML=rawPages[i];ensureClean(holder);var paper=holder.querySelector('.paper');if(!paper)throw Error('계약서 페이지 오류');
   setPdfInputs(paper,consents,img);stage.appendChild(paper);
   paper.style.display='block';paper.style.width='794px';paper.style.height='1123px';paper.style.minHeight='1123px';paper.style.maxHeight='1123px';
-  var c=await window.html2canvas(paper,{backgroundColor:'#fff',scale:1.7,logging:false,useCORS:true,width:794,height:1123});
+  paper.style.setProperty('transform','none','important');paper.style.setProperty('margin','0','important');
+  await Promise.all(Array.from(paper.querySelectorAll('img')).map(image=>image.complete?Promise.resolve():new Promise(resolve=>{image.addEventListener('load',resolve,{once:true});image.addEventListener('error',resolve,{once:true})})));
+  var c=await window.html2canvas(paper,{backgroundColor:'#fff',scale:1.85,logging:false,useCORS:true,width:794,height:1123,windowWidth:1280,windowHeight:1600,scrollX:0,scrollY:0,
+    onclone:function(cloned){var exportPaper=cloned.querySelector('#renderZone .paper');if(exportPaper){exportPaper.style.setProperty('transform','none','important');exportPaper.style.setProperty('margin','0','important');}}});
   if(i)pdf.addPage('a4','portrait');
-  pdf.addImage(c.toDataURL('image/jpeg',.84),'JPEG',0,0,210,297,undefined,'FAST');
+  pdf.addImage(c.toDataURL('image/jpeg',.91),'JPEG',0,0,210,297,undefined,'FAST');
   paper.remove();
  }
  return pdf.output('datauristring').split(',')[1];
