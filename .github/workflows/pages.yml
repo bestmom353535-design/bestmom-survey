@@ -25,6 +25,9 @@ jobs:
         run: |
           mkdir -p _site
           cp index.html admin.html config.js _site/
+          # Public, token-scoped signer only; no CRM admin assets.
+          mkdir -p _site/econtract
+          cp econtract/index.html _site/econtract/index.html
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
